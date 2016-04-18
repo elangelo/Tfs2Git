@@ -59,9 +59,34 @@ namespace Utils
             copyNodes(sourceIterationRootNodes, targetIterationRootNodeInfo, targetCommonStructureService);
         }
 
-        public static void CopyFields(Revision revision0, WorkItem targetWorkItem, Dictionary<int, int> areaNodeMap, Dictionary<int, int> iterationNodeMap, Project targetProject, Project sourceProject, WorkItemStoreMapping wism, bool newWorkItem)
+        public static void CopyFields(Revision revision0, WorkItem targetWorkItem, Dictionary<int, int> areaNodeMap, Dictionary<int, int> iterationNodeMap, Project targetProject, Project sourceProject, WorkItemStoreMapping wism, bool newWorkItem, bool addStatusChangesToHistory = false)
         {
             var workItemTypeMapping = wism.WorkItemTypeMapping.Where(w => w.SourceWorkItemType == revision0.WorkItem.Type.Name).First();
+
+            var changeDate = string.Empty;
+            var sourceReason = string.Empty;
+            var targetReason = string.Empty;
+
+            var sourceState = revision0.Fields["System.State"].Value;
+            var targetState = revision0.Fields["System.State"].Value;
+
+            bool stateChanged = false;
+            //if (workItemTypeMapping.WorkItemFieldMappings.Where(f => f.SourceFieldName == "System.State").FirstOrDefault()?.WorkItemFieldAllowedValuesMapping.Where(wifv => wifv.SourceFieldValue == sourceState).FirstOrDefault()?.TargetFieldValue != targetState)
+            if ((DateTime)revision0.Fields["Microsoft.VSTS.Common.StateChangeDate"]?.Value == (DateTime)revision0.Fields["System.ChangedDate"].Value)
+            {
+                stateChanged = true;
+                changeDate = revision0.Fields["Microsoft.VSTS.Common.StateChangeDate"]?.Value.ToString();
+                sourceReason = revision0.Fields["System.Reason"]?.Value.ToString();
+                var reasonField = workItemTypeMapping.WorkItemFieldMappings.Where(f => f.SourceFieldName == "System.Reason").FirstOrDefault();
+                if (reasonField != null)
+                {
+                    var targetReasonValue = reasonField.WorkItemFieldAllowedValuesMapping.Where(f => f.SourceFieldValue.ToString() == sourceReason).FirstOrDefault();
+                    if (targetReasonValue != null)
+                    {
+                        targetReason = targetReasonValue.TargetFieldValue.ToString();
+                    }
+                }
+            }
 
             foreach (Field field in revision0.Fields)
             {
@@ -108,10 +133,18 @@ namespace Utils
                                 }
                                 else if (field.Value != null && field.Value.GetType() == typeof(string))
                                 {
-                                    if (fieldMapping.WorkItemFieldAllowedValuesMapping != null && fieldMapping.WorkItemFieldAllowedValuesMapping.Length > 0)
+                                    if (fieldMapping.WorkItemFieldAllowedValuesMapping != null && fieldMapping.WorkItemFieldAllowedValuesMapping.Length > 0 && !string.IsNullOrEmpty(field.Value.ToString()))
                                     {
                                         string tmpValue2 = field.Value.ToString();
-                                        targetField.Value = fieldMapping.WorkItemFieldAllowedValuesMapping.Where(p => p.SourceFieldValue.ToString() == tmpValue2).FirstOrDefault().TargetFieldValue;
+                                        var targetValue = fieldMapping.WorkItemFieldAllowedValuesMapping.Where(p => p.SourceFieldValue.ToString() == tmpValue2).FirstOrDefault();
+                                        if (targetValue != null)
+                                        {
+                                            targetField.Value = targetValue.TargetFieldValue;
+                                        }
+                                        else
+                                        {
+                                            throw new Exception($"missing a targetValue for sourceValue {tmpValue2}");
+                                        }
                                     }
                                     else
                                     {
@@ -176,6 +209,13 @@ namespace Utils
             foreach (var attachment in toBeRemoved)
             {
                 targetWorkItem.Attachments.Remove(attachment);
+            }
+
+            if (stateChanged && addStatusChangesToHistory)
+            {
+                var mappedon = (targetReason != null ? $" mapped on '{targetReason}'" : "");
+                var historyMsg = $"{changeDate}: State changed to '{sourceState}', Reason was '{sourceReason}'{mappedon}";
+                targetWorkItem.Fields["System.History"].Value += historyMsg;
             }
         }
 

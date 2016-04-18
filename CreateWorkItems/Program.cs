@@ -50,6 +50,9 @@ namespace CreateWorkItems
         [Option('e', "CloneTestPlans", DefaultValue = false)]
         public bool CloneTestPlans { get; set; }
 
+        [Option('s', "AddStatusChangesToHistory", DefaultValue = false, HelpText = "Add status changes and reason explicitly to history, especially usefull for project migrations with process template change")]
+        public bool AddStatusChangesToHistory { get; set; }
+
         [HelpOption]
         public string GetUsage()
         {
