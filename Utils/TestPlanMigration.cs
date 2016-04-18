@@ -4,6 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
+//code mostly copied from TotalTFSMigration, just added code to migrate query based test plans
+
+
 namespace Utils
 {
     public class TestPlanMigration

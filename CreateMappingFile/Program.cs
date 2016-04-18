@@ -21,11 +21,12 @@ namespace CreateMappingFile
         [HelpOption]
         public string GetUsage()
         {
-            var usage = "Usage: CreateMappingFile.exe -i \"https://tfsserver:8080/tfs/tfscollection\" -o \"c:\\git\\mapping.txt\"";
+            var usage = "Usage: CreateMappingFile.exe -i \"https://tfsserver:8080/tfs/DefaultCollection\" -o \"c:\\git\\mapping.txt\"";
 
             var help = new HelpText
             {
                 Heading = "CreateMappingFile",
+
                 AdditionalNewLineAfterOption = true,
                 MaximumDisplayWidth = 100
             };

@@ -14,7 +14,7 @@ namespace CreateWorkItems
 {
     internal class Options
     {
-        [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. https://tfsserver:8080/tfs/tfscollection")]
+        [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. https://tfsserver:8080/tfs/DefaultCollection")]
         public string SourceTfsCollectionUrl { get; set; }
 
         [Option('n', "TargetTfsCollectionUrl", Required = true, HelpText = "Url to the target (new) Tfs Collection.")]
@@ -53,7 +53,7 @@ namespace CreateWorkItems
         [HelpOption]
         public string GetUsage()
         {
-            var usage = "Usage: CreateWorkItems.exe -i \"https://tfsserver:8080/tfs/tfscollection\" -p \"SuperProject\" -n \"https://tfsserver:8080/tfs/newtfscollection\" -t \"SuperProject_NG\" -o \"D:\\migration\\migration_Superproject.xml\"";
+            var usage = "Usage: CreateWorkItems.exe -i \"https://tfsserver:8080/tfs/DefaultCollection\" -p \"SourceProject\" -n \"https://tfsserver:8080/tfs/newDefaultCollection\" -t \"TargetProject\" -o \"D:\\migration\\migration_TargetProject.xml\" -a -f -q -e";
 
             var help = new HelpText
             {

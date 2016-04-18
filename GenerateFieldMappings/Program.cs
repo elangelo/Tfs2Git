@@ -12,7 +12,7 @@ namespace GenerateFieldMappings
 {
     internal class Options
     {
-        [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. https://tfsserver:8080/tfs/tfscollection")]
+        [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. https://tfsserver:8080/tfs/DefaultCollection")]
         public string SourceTfsCollectionUrl { get; set; }
 
         [Option('n', "TargetTfsCollectionUrl", Required = true, HelpText = "Url to the target (new) Tfs Collection.")]
@@ -30,14 +30,14 @@ namespace GenerateFieldMappings
         [Option('o', "Output", Required = true, HelpText = "file location where results can be saved")]
         public string Output { get; set; }
 
-        [OptionList('m', "Mapping", Separator = ';', HelpText = "Manually add mappings between WorkItemTypes")]
+        [OptionList('m', "Mapping", Separator = ';', HelpText = "Manually add mappings between WorkItemTypes. E.g. Issue:Bug, will map Issue on the SourceProject to Bug on the TargetProject, usefull if you are doing cross process template migrations")]
         public IList<string> ManualMappings { get; set; }
 
         [HelpOption]
         public string GetUsage()
         {
-            var usage = "Usage: GenerateFieldMappings.exe -i \"https://tfsserver:8080/tfs/tfscollection\" -p \"SuperProject\" -n \"https://tfsserver:8080/tfs/newtfscollection\" -t \"SuperProject_NG\" -o \"D:\\migration\\migration_Superproject.xml\"";
-            var usage2 = "Usage: GenerateFieldMappings.exe -i \"https://tfsserver:8080/tfs/tfscollection\" -p \"SuperProject\" -n \"https://tfsserver:8080/tfs/newtfscollection\" -t \"SuperProject_NG\" -o \"D:\\migration\\migration_Superproject.xml\" -m \"User Story:Product Backlog Item;Issue:Impediment\"";
+            var usage = "Usage: GenerateFieldMappings.exe -i \"https://tfsserver:8080/tfs/DefaultCollection\" -p \"SourceProject\" -n \"https://tfsserver:8080/tfs/newDefaultCollection\" -t \"TargetProject\" -o \"D:\\migration\\migration_Sourceroject.xml\"";
+            var usage2 = "Usage: GenerateFieldMappings.exe -i \"https://tfsserver:8080/tfs/DefaultCollection\" -p \"SourceProject\" -n \"https://tfsserver:8080/tfs/newDefaultCollection\" -t \"TargetProject\" -o \"D:\\migration\\migration_Sourceproject.xml\" -m \"User Story:Product Backlog Item;Issue:Bug\"";
 
             var help = new HelpText
             {

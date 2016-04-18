@@ -8,7 +8,7 @@ namespace CreateAUTHORSfile
 {
     internal class Options
     {
-        [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. https://tfsserver:8080/tfs/tfscollection")]
+        [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. https://tfsserver:8080/tfs/DefaultCollection")]
         public string SourceTfsCollectionUrl { get; set; }
 
         [Option('p', "SourceProject", Required = true, HelpText = "Name of the source project")]
@@ -26,7 +26,7 @@ namespace CreateAUTHORSfile
         [HelpOption]
         public string GetUsage()
         {
-            var usage = "Usage: CreateAUTHORSfile.exe -i \"http://tfsserver:8080/tfs/tfscollection\" -p \"SuperProject\" -o \"c:\\migration\\AUTHORS\" -d \"tfs@home.org\"";
+            var usage = "Usage: CreateAUTHORSfile.exe -i \"http://tfsserver:8080/tfs/DefaultCollection\" -p \"SourceProject\" -o \"c:\\migration\\AUTHORS\" -d \"tfs@home.org\"";
 
             var help = new HelpText
             {
