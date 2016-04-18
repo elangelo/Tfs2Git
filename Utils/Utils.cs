@@ -108,7 +108,7 @@ namespace Utils
                                 }
                                 else if (field.Value != null && field.Value.GetType() == typeof(string))
                                 {
-                                    if (fieldMapping.WorkItemFieldAllowedValuesMapping != null)
+                                    if (fieldMapping.WorkItemFieldAllowedValuesMapping != null && fieldMapping.WorkItemFieldAllowedValuesMapping.Length > 0)
                                     {
                                         string tmpValue2 = field.Value.ToString();
                                         targetField.Value = fieldMapping.WorkItemFieldAllowedValuesMapping.Where(p => p.SourceFieldValue.ToString() == tmpValue2).FirstOrDefault().TargetFieldValue;
