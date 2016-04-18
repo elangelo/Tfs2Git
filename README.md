@@ -11,7 +11,7 @@ The code is provided as is, I will not be held responsible if it eats kittens or
 Runs through the history of all workitems in tfsproject and stores revisions in database. Just references for future use and dependency sorting and tracking of what was migrated...
 	
 ### GenerateFieldMappings
-Creates mapping between fields that are available on source tfs project and target tfs project, allows discarding of fields no longer in use. Output is an xml file you are supposed to have a look at. If you see that fields or field values were not uniquely mapped to new fields or field values on the new project, edit this file.
+Creates mapping between fields that are available on source tfs project and target tfs project, allows discarding of fields no longer in use. Output is an xml file you are supposed to have a look at. If you see that fields or field values were not uniquely mapped to new fields or field values (find '|' character in the file) on the new project, edit this file.
 
 ### CreateWorkItems
 Does the actual migration, keeps progress in database created in 'BuildHistoryInDatabase'. Also migrates Areas, Iterations, Testplans if specified.
