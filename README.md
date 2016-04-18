@@ -32,7 +32,7 @@ More code.
 	1. GenerateFieldMappings.exe -i "https://tfsserver:8080/tfs/DefaultCollection" -p "SourceProject" -n "https://tfsserver:8080/tfs/newDefaultCollection" -t "TargetProject" -o "c:\git\migration_TargetProject.xml" -m "User Story:Product Backlog Item;Issue:Bug"
 	2. Ammend the output file so all field mappings and field value mappings you want are in the xml file.
 	3. BuildHistoryInDatabase.exe -i "https://tfsserver:8080/tfs/DefaultCollection" -p "SourceProject"
-	4. CreateWorkItems.exe -i "https://tfsserver:8080/tfs/DefaultCollection" -p "SourceProject" -n "https://tfsserver:8080/tfs/newDefaultCollection" -t "TargetProject" -o "c:\git\migration_TargetProject.xml" -a -f -q -e
+	4. CreateWorkItems.exe -i "https://tfsserver:8080/tfs/DefaultCollection" -p "SourceProject" -n "https://tfsserver:8080/tfs/newDefaultCollection" -t "TargetProject" -w "c:\git\migration_TargetProject.xml" -l c:\git\migration.log -a -f -q -e
 	5. CreateMappingFile.exe -i "https://tfsserver:8080/tfs/DefaultCollection" -o "c:\git\mapping.txt"
 	6. CreateAUTHORSfile.exe -i "http://tfsserver:8080/tfs/DefaultCollection" -p "SourceProject" -o "c:\git\AUTHORS.txt" -d "tfs@home.org"
 	7. Use git-tfs to migrate the code (see below)
