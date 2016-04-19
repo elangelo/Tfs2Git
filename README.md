@@ -39,6 +39,6 @@ More code.
 
 
 ## Git-tfs stuff
-	1.	[CMD] > git tfs clone http://tfsserver:8080/tfs/DefaultCollection "$/SourceProject/Main" --with-branches --authors=c:\git\AUTHORS.txt --export --export-work-item-mapping=c:\git\mapping.txt
+	1.	[CMD] > git tfs clone http://tfsserver:8080/tfs/DefaultCollection "$/SourceProject/Main" --branches=all --authors=c:\git\AUTHORS.txt --export --export-work-item-mapping=c:\git\mapping.txt
 	2.	git remote add origin http://tfsserver:8080/newDefaultCollection/_git/TargetProject
 	3.	git push origin --all
