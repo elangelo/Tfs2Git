@@ -41,6 +41,9 @@ namespace CreateWorkItems
         [Option('a', "CloneAreasAndIterations", DefaultValue = false)]
         public bool CloneAreasAndIterations { get; set; }
 
+        [Option('k', "AreaAndIterationRoot", HelpText = "RootNode in the Area and Iteration Path that will be created to append the Areas and Iteration path of the source project. Especially usefull if you are migrating multiple projects into one project")]
+        public string AreaAndIterationRoot { get; set; }
+
         [Option('f', "CloneWorkItems", DefaultValue = false)]
         public bool CloneWorkItems { get; set; }
 
@@ -50,8 +53,11 @@ namespace CreateWorkItems
         [Option('e', "CloneTestPlans", DefaultValue = false)]
         public bool CloneTestPlans { get; set; }
 
-        [Option('s', "AddStatusChangesToHistory", DefaultValue = false, HelpText = "Add status changes and reason explicitly to history, especially usefull for project migrations with process template change")]
+        [Option('r', "AddStatusChangesToHistory", DefaultValue = false, HelpText = "Add status changes and reason explicitly to history, especially usefull for project migrations with process template change")]
         public bool AddStatusChangesToHistory { get; set; }
+
+        [Option('y', "AddLinksToOld", DefaultValue = false, HelpText = "Add links to work items in the same team collection that were not migrated")]
+        public bool AddLinksToOldWorkItems { get; set; }
 
         [HelpOption]
         public string GetUsage()
@@ -80,6 +86,12 @@ namespace CreateWorkItems
             var options = new Options();
             if (Parser.Default.ParseArguments(args, options))
             {
+                if (options.AddLinksToOldWorkItems && options.SourceTfsCollectionUrl != options.TargetTfsCollectionUrl)
+                {
+                    Console.WriteLine("You can't keep links to old work items if you are not migrating within the same tfs collection!");
+                    Environment.Exit(1);
+                }
+
                 var initialPosition = Console.CursorTop;
                 string workItemMappingFile = options.WorkItemMappingFile;
 
@@ -113,13 +125,16 @@ namespace CreateWorkItems
                 var stopwatch = Stopwatch.StartNew();
                 if (cloneAreasAndIterations)
                 {
-                    if (Utils.Utils.GetWorkItems(targetWorkitemStore, targetProjectName).Count > 0)
+                    if (string.IsNullOrEmpty(options.AreaAndIterationRoot))
                     {
-                        Console.WriteLine("there are already workitems in the project, cloning areas an iterations will destroy previous work!");
-                        Environment.Exit(1);
+                        if (Utils.Utils.GetWorkItems(targetWorkitemStore, targetProjectName).Count > 0)
+                        {
+                            Console.WriteLine("there are already workitems in the project, cloning areas an iterations will destroy previous work!");
+                            Environment.Exit(1);
+                        }
                     }
 
-                    Utils.Utils.CopyAreaAndIterationNodes(sourceTfsUrl, sourceProjectName, targetTfsUrl, targetProjectName);
+                    Utils.Utils.CopyAreaAndIterationNodes(sourceTfsUrl, sourceProjectName, targetTfsUrl, targetProjectName, options.AreaAndIterationRoot);
                 }
 
                 if (cloneWorkItems)
@@ -131,8 +146,22 @@ namespace CreateWorkItems
 
                     var targetProject = targetWorkitemStore.Projects[targetProjectName];
                     var sourceProject = sourceWorkitemStore.Projects[sourceProjectName];
-                    var areaNodeMap = Utils.Utils.GetNodeMap(sourceProject.AreaRootNodes, targetProject.AreaRootNodes);
-                    var iterationNodeMap = Utils.Utils.GetNodeMap(sourceProject.IterationRootNodes, targetProject.IterationRootNodes);
+                    NodeCollection targetAreaNodeCollection;
+                    NodeCollection targetIterationNodeCollection;
+                    if (string.IsNullOrEmpty(options.AreaAndIterationRoot))
+                    {
+                        targetAreaNodeCollection = targetProject.AreaRootNodes;
+                        targetIterationNodeCollection = targetProject.IterationRootNodes;
+                    }
+                    else
+                    {
+                        targetAreaNodeCollection = targetProject.FindNodeInSubTree(options.AreaAndIterationRoot, Node.TreeType.Area).ChildNodes;
+                        targetIterationNodeCollection = targetProject.FindNodeInSubTree(options.AreaAndIterationRoot, Node.TreeType.Iteration).ChildNodes;
+                    }
+
+
+                    var areaNodeMap = Utils.Utils.GetNodeMap(sourceProject.AreaRootNodes, targetAreaNodeCollection);
+                    var iterationNodeMap = Utils.Utils.GetNodeMap(sourceProject.IterationRootNodes, targetIterationNodeCollection);
 
                     var mapping = new Dictionary<int, int>();
                     var notLinkedYet = 0;
@@ -160,40 +189,126 @@ namespace CreateWorkItems
 
                                         if (wiRev.Kind == "link")
                                         {
-                                            var targetWorkItem = targetWorkitemStore.GetWorkItem(mapping[wiRev.OriginalId]);
-                                            var sourceWorkItem = sourceWorkitemStore.GetWorkItem(wiRev.OriginalId);
-
-                                            var sourceWorkItemLinkHistoryRev = sourceWorkItem.WorkItemLinkHistory.Cast<WorkItemLink>().Where(wil => wil.RemovedDate.Year == 9999 && wil.TargetId.ToString() == wiRev.ChangedFields).First();
-
-                                            if (mapping.ContainsKey(sourceWorkItemLinkHistoryRev.TargetId))
+                                            if (!mapping.ContainsKey(wiRev.OriginalId))
                                             {
-                                                if (targetWorkitemStore.GetWorkItem(mapping[sourceWorkItemLinkHistoryRev.TargetId]).WorkItemLinks.Cast<WorkItemLink>().Where(wil => wil.TargetId == targetWorkItem.Id || wil.SourceId == targetWorkItem.Id).Any())
-                                                {
-                                                    //Link exists already.
-                                                }
-                                                else
-                                                {
-                                                    var linkTypeEnd = targetWorkitemStore.WorkItemLinkTypes.LinkTypeEnds[sourceWorkItemLinkHistoryRev.LinkTypeEnd.Name];
-                                                    var workItemLink = new WorkItemLink(linkTypeEnd, mapping[sourceWorkItemLinkHistoryRev.SourceId], mapping[sourceWorkItemLinkHistoryRev.TargetId]);
-                                                    workItemLink.ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate;
-                                                    targetWorkItem.WorkItemLinks.Add(workItemLink);
+                                                ////if (options.AddLinksToOldWorkItems)
+                                                ////{
+                                                ////    var a = int.Parse(wiRev.ChangedFields);
 
-                                                    var errors = targetWorkItem.Validate();
-                                                    if (errors.Count == 0)
-                                                    {
-                                                        targetWorkItem.Save();
-                                                    }
-                                                    else
-                                                    {
-                                                        invalidWorkItems.Add(wiRev.OriginalId, string.Join(Environment.NewLine, errors.Cast<Field>().Select(f => f.ReferenceName + " " + f.Status.ToString())));
-                                                    }
-                                                }
+
+
+                                                ////    //ChangedFields contains the target id of the link
+                                                ////    //OriginalId contains original source id of link
+                                                ////    //TargetId contains the migrated source id of the link//this one will always be empty, so ignore it
+                                                ////    //1. check if one of the 2 id's was migrated, if none was migrated ignore link we don't need to do anything
+                                                ////    //2. if source id of link was migrated
+                                                ////    //3. if target id of link was migrated
+
+
+
+
+
+
+
+
+
+
+                                                ////    //var sourceWorkItem = sourceWorkitemStore.GetWorkItem(wiRev.OriginalId);
+
+                                                ////    //var sourceWorkItemLinkHistoryRev = sourceWorkItem.WorkItemLinkHistory.Cast<WorkItemLink>().Where(wil => wil.RemovedDate.Year == 9999 && wil.TargetId.ToString() == wiRev.ChangedFields).First();
+
+                                                ////    //var linkTypeEnd = targetWorkitemStore.WorkItemLinkTypes.LinkTypeEnds[sourceWorkItemLinkHistoryRev.LinkTypeEnd.Name];
+                                                ////    //var workItemLink = new WorkItemLink(linkTypeEnd, mapping[sourceWorkItemLinkHistoryRev.SourceId], mapping[sourceWorkItemLinkHistoryRev.TargetId]);
+                                                ////    //workItemLink.ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate;
+                                                ////    //targetWorkItem.WorkItemLinks.Add(workItemLink);
+
+                                                ////    //var errors = targetWorkItem.Validate();
+                                                ////    //if (errors.Count == 0)
+                                                ////    //{
+                                                ////    //    targetWorkItem.Save();
+                                                ////    //}
+                                                ////    //else
+                                                ////    //{
+                                                ////    //    invalidWorkItems.Add(wiRev.OriginalId, string.Join(Environment.NewLine, errors.Cast<Field>().Select(f => f.ReferenceName + " " + f.Status.ToString())));
+                                                ////    //}
+                                                ////}
+                                                ////else
+                                                ////{
+
+                                                //this item was not migrated, maybe you didn't want it?
+                                                continue;
+                                                ////}
                                             }
                                             else
                                             {
-                                                notLinkedYet++;
-                                                continue;
+                                                var targetWorkItem = targetWorkitemStore.GetWorkItem(mapping[wiRev.OriginalId]);
+                                                var sourceWorkItem = sourceWorkitemStore.GetWorkItem(wiRev.OriginalId);
+
+                                                var sourceWorkItemLinkHistoryRev = sourceWorkItem.WorkItemLinkHistory.Cast<WorkItemLink>().Where(wil => wil.RemovedDate.Year == 9999 && wil.TargetId.ToString() == wiRev.ChangedFields).First();
+
+                                                if (mapping.ContainsKey(sourceWorkItemLinkHistoryRev.TargetId))
+                                                {
+                                                    if (targetWorkitemStore.GetWorkItem(mapping[sourceWorkItemLinkHistoryRev.TargetId]).WorkItemLinks.Cast<WorkItemLink>().Where(wil => wil.TargetId == targetWorkItem.Id || wil.SourceId == targetWorkItem.Id).Any())
+                                                    {
+                                                        //Link exists already.
+                                                        continue;
+                                                    }
+                                                    else
+                                                    {
+                                                        var linkTypeEnd = targetWorkitemStore.WorkItemLinkTypes.LinkTypeEnds[sourceWorkItemLinkHistoryRev.LinkTypeEnd.Name];
+                                                        var workItemLink = new WorkItemLink(linkTypeEnd, mapping[sourceWorkItemLinkHistoryRev.SourceId], mapping[sourceWorkItemLinkHistoryRev.TargetId]);
+                                                        workItemLink.ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate;
+                                                        targetWorkItem.WorkItemLinks.Add(workItemLink);
+
+                                                        var errors = targetWorkItem.Validate();
+                                                        if (errors.Count == 0)
+                                                        {
+                                                            targetWorkItem.Save();
+                                                        }
+                                                        else
+                                                        {
+                                                            invalidWorkItems.Add(wiRev.OriginalId, string.Join(Environment.NewLine, errors.Cast<Field>().Select(f => f.ReferenceName + " " + f.Status.ToString())));
+                                                        }
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    // target of the link was not migrated, check if we want to link to old workitems
+                                                    if (options.AddLinksToOldWorkItems)
+                                                    {
+                                                        //how can we check that we will migrate this one or not....
+                                                        //add a link to sourceWorkItemLinkHistoryRev.TargetId
+                                                        if (sourceWorkitemStore.GetWorkItem(sourceWorkItemLinkHistoryRev.TargetId).WorkItemLinks.Cast<WorkItemLink>().Where(wil => wil.TargetId == targetWorkItem.Id || wil.SourceId == targetWorkItem.Id).Any())
+                                                        {
+                                                            continue;
+                                                        }
+                                                        else
+                                                        {
+                                                            var linkTypeEnd = targetWorkitemStore.WorkItemLinkTypes.LinkTypeEnds[sourceWorkItemLinkHistoryRev.LinkTypeEnd.Name];
+                                                            var workItemLink = new WorkItemLink(linkTypeEnd, targetWorkItem.Id, sourceWorkItemLinkHistoryRev.TargetId);
+                                                            //var workItemLink = new WorkItemLink(linkTypeEnd, mapping[sourceWorkItemLinkHistoryRev.SourceId], mapping[sourceWorkItemLinkHistoryRev.TargetId]);
+                                                            workItemLink.ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate;
+                                                            targetWorkItem.WorkItemLinks.Add(workItemLink);
+
+                                                            var errors = targetWorkItem.Validate();
+                                                            if (errors.Count == 0)
+                                                            {
+                                                                targetWorkItem.Save();
+                                                            }
+                                                            else
+                                                            {
+                                                                invalidWorkItems.Add(wiRev.OriginalId, string.Join(Environment.NewLine, errors.Cast<Field>().Select(f => f.ReferenceName + " " + f.Status.ToString())));
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        // notLinkedYet++;
+                                                        continue;
+                                                    }
+                                                }
                                             }
+
                                         }
                                         else if (wiRev.Kind == "revision")
                                         {
@@ -213,16 +328,24 @@ namespace CreateWorkItems
                                                 }
                                                 else
                                                 {
-                                                    Console.WriteLine($"{sourceWorkItem.Type.Name} was not found in the WorkItemMappingFile");
+                                                    Trace.WriteLine($"{sourceWorkItem.Type.Name} was not found in the WorkItemMappingFile");
                                                     continue;
                                                 }
                                             }
                                             else
                                             {
-                                                targetWorkItem = targetWorkitemStore.GetWorkItem(mapping[wiRev.OriginalId]);
+                                                if (!mapping.ContainsKey(wiRev.OriginalId))
+                                                {
+                                                    //this work item was not migrated, maybe you didn't want it?
+                                                    continue;
+                                                }
+                                                else
+                                                {
+                                                    targetWorkItem = targetWorkitemStore.GetWorkItem(mapping[wiRev.OriginalId]);
+                                                }
                                             }
 
-                                            Utils.Utils.CopyFields(sourceWiRev, targetWorkItem, areaNodeMap, iterationNodeMap, targetProject, sourceProject, wism, isNew);
+                                            Utils.Utils.CopyFields(sourceWiRev, targetWorkItem, areaNodeMap, iterationNodeMap, targetProject, sourceProject, wism, isNew, options.AreaAndIterationRoot);
 
                                             if (targetWorkItem.Fields[CoreField.ChangedDate].Value != null)
                                             {

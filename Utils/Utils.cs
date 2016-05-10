@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 
 namespace Utils
@@ -16,7 +17,7 @@ namespace Utils
     {
         private static string[] fieldsIDontCareAbout = new string[] { "Microsoft.VSTS.Build.IntegrationBuild", "Microsoft.VSTS.Build.FoundIn", "System.ChangedBy", "Microsoft.VSTS.Bild.IntegrationBuild", "Microsoft.VSTS.Common.ClosedBy", "Microsoft.VSTS.Common.ActivatedBy", "System.AssignedTo", "Microsoft.VSTS.CodeReview.AcceptedBy" };
 
-        public static void CopyAreaAndIterationNodes(string sourceTfsTeamFoundationServerUrl, string sourceProjectName, string targetTfsTeamFoundationServerUrl, string targetProjectName)
+        public static void CopyAreaAndIterationNodes(string sourceTfsTeamFoundationServerUrl, string sourceProjectName, string targetTfsTeamFoundationServerUrl, string targetProjectName, string AreaOfIterationPath)
         {
             var sourceTfs = GetTfsTeamProjectCollection(sourceTfsTeamFoundationServerUrl);
             var targetTfs = GetTfsTeamProjectCollection(targetTfsTeamFoundationServerUrl);
@@ -25,13 +26,37 @@ namespace Utils
             var targetProject = GetWorkItemStore(targetTfsTeamFoundationServerUrl, true).Projects[targetProjectName];
 
             var targetCommonStructureService = targetTfs.GetService<ICommonStructureService>();
-            NodeInfo targetAreaRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectModelHierarchy").First();
-            NodeInfo targetIterationRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectLifecycle").First();
+
+            NodeInfo targetAreaRootNodeInfo;
+            NodeInfo targetIterationRootNodeInfo;
+
+
+            if (string.IsNullOrEmpty(AreaOfIterationPath))
+            {
+                targetAreaRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectModelHierarchy").First();
+                targetIterationRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectLifecycle").First();
+            }
+            else
+            {
+                var rootAreaRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectModelHierarchy").First();
+                var targetAreaNodePath = targetCommonStructureService.CreateNode(AreaOfIterationPath, rootAreaRootNodeInfo.Uri);
+                targetAreaRootNodeInfo = targetCommonStructureService.GetNode(targetAreaNodePath);
+
+                var rootIterationRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectLifecycle").First();
+                var targetIterationNodePath = targetCommonStructureService.CreateNode(AreaOfIterationPath, rootIterationRootNodeInfo.Uri);
+                targetIterationRootNodeInfo = targetCommonStructureService.GetNode(targetIterationNodePath);
+            }
+
+            //refresh, otherwise we can't find the new Areas/Iterations we just created
+            targetProject = GetWorkItemStore(sourceTfsTeamFoundationServerUrl, false).Projects[sourceProjectName];
+            targetProject = GetWorkItemStore(targetTfsTeamFoundationServerUrl, true).Projects[targetProjectName];
 
             List<string> nodeUris = new List<string>();
             //copy areas
+
             var sourceAreaRootNodes = sourceProject.AreaRootNodes;
-            foreach (Node node in targetProject.AreaRootNodes)
+            //foreach (Node node in targetProject.AreaRootNodes)
+            foreach (Node node in targetProject.FindNodeInSubTree(targetAreaRootNodeInfo.Name, Node.TreeType.Area))
             {
                 nodeUris.Add(node.Uri.ToString());
             }
@@ -46,7 +71,8 @@ namespace Utils
             //copy iterations
             var sourceIterationRootNodes = sourceProject.IterationRootNodes;
             nodeUris = new List<string>();
-            foreach (Node node in targetProject.IterationRootNodes)
+            //foreach (Node node in targetProject.IterationRootNodes)
+            foreach (Node node in targetProject.FindNodeInSubTree(targetIterationRootNodeInfo.Name, Node.TreeType.Iteration))
             {
                 nodeUris.Add(node.Uri.ToString());
             }
@@ -59,7 +85,7 @@ namespace Utils
             copyNodes(sourceIterationRootNodes, targetIterationRootNodeInfo, targetCommonStructureService);
         }
 
-        public static void CopyFields(Revision revision0, WorkItem targetWorkItem, Dictionary<int, int> areaNodeMap, Dictionary<int, int> iterationNodeMap, Project targetProject, Project sourceProject, WorkItemStoreMapping wism, bool newWorkItem, bool addStatusChangesToHistory = false)
+        public static void CopyFields(Revision revision0, WorkItem targetWorkItem, Dictionary<int, int> areaNodeMap, Dictionary<int, int> iterationNodeMap, Project targetProject, Project sourceProject, WorkItemStoreMapping wism, bool newWorkItem, string areaOrIterationPath, bool addStatusChangesToHistory = false)
         {
             var workItemTypeMapping = wism.WorkItemTypeMapping.Where(w => w.SourceWorkItemType == revision0.WorkItem.Type.Name).First();
 
@@ -72,20 +98,27 @@ namespace Utils
 
             bool stateChanged = false;
             //if (workItemTypeMapping.WorkItemFieldMappings.Where(f => f.SourceFieldName == "System.State").FirstOrDefault()?.WorkItemFieldAllowedValuesMapping.Where(wifv => wifv.SourceFieldValue == sourceState).FirstOrDefault()?.TargetFieldValue != targetState)
-            if ((DateTime)revision0.Fields["Microsoft.VSTS.Common.StateChangeDate"]?.Value == (DateTime)revision0.Fields["System.ChangedDate"].Value)
+            if (revision0.Fields.Contains("Microsoft.VSTS.Common.StateChangeDate"))
             {
-                stateChanged = true;
-                changeDate = revision0.Fields["Microsoft.VSTS.Common.StateChangeDate"]?.Value.ToString();
-                sourceReason = revision0.Fields["System.Reason"]?.Value.ToString();
-                var reasonField = workItemTypeMapping.WorkItemFieldMappings.Where(f => f.SourceFieldName == "System.Reason").FirstOrDefault();
-                if (reasonField != null)
+                if ((DateTime)revision0.Fields["Microsoft.VSTS.Common.StateChangeDate"]?.Value == (DateTime)revision0.Fields["System.ChangedDate"].Value)
                 {
-                    var targetReasonValue = reasonField.WorkItemFieldAllowedValuesMapping.Where(f => f.SourceFieldValue.ToString() == sourceReason).FirstOrDefault();
-                    if (targetReasonValue != null)
+                    stateChanged = true;
+                    changeDate = revision0.Fields["Microsoft.VSTS.Common.StateChangeDate"]?.Value.ToString();
+                    sourceReason = revision0.Fields["System.Reason"]?.Value.ToString();
+                    var reasonField = workItemTypeMapping.WorkItemFieldMappings.Where(f => f.SourceFieldName == "System.Reason").FirstOrDefault();
+                    if (reasonField != null)
                     {
-                        targetReason = targetReasonValue.TargetFieldValue.ToString();
+                        var targetReasonValue = reasonField.WorkItemFieldAllowedValuesMapping.Where(f => f.SourceFieldValue.ToString() == sourceReason).FirstOrDefault();
+                        if (targetReasonValue != null)
+                        {
+                            targetReason = targetReasonValue.TargetFieldValue.ToString();
+                        }
                     }
                 }
+            }
+            else
+            {
+                Console.WriteLine(revision0.WorkItem.Type);
             }
 
             foreach (Field field in revision0.Fields)
@@ -129,6 +162,16 @@ namespace Utils
                                     if (newWorkItem)
                                     {
                                         targetField.Value = field.Value;
+                                    }
+                                }
+                                else if (field.ReferenceName.Equals("System.AreaPath", StringComparison.InvariantCultureIgnoreCase) || field.ReferenceName.Equals("System.IterationPath", StringComparison.InvariantCultureIgnoreCase))
+                                {
+                                    if (!string.IsNullOrEmpty(areaOrIterationPath))
+                                    {
+                                        string tmpValue3 = field.Value.ToString();
+
+                                        var r = new Regex($"{sourceProject.Name}");
+                                        targetField.Value = r.Replace(tmpValue3, (m) => $"{targetProject.Name}\\{areaOrIterationPath}");
                                     }
                                 }
                                 else if (field.Value != null && field.Value.GetType() == typeof(string))
@@ -211,7 +254,7 @@ namespace Utils
                 targetWorkItem.Attachments.Remove(attachment);
             }
 
-            if (stateChanged && addStatusChangesToHistory)
+            if (revision0.Fields.Contains("Microsoft.VSTS.Common.StateChangeDate") && stateChanged && addStatusChangesToHistory)
             {
                 var mappedon = (targetReason != null ? $" mapped on '{targetReason}'" : "");
                 var historyMsg = $"{changeDate}: State changed to '{sourceState}', Reason was '{sourceReason}'{mappedon}";
