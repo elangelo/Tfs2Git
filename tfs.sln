@@ -22,10 +22,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "specials", "specials", "{738A9D8D-6A18-4EA9-81BB-5563789767B6}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CopyTestCases", "CopyTestCases\CopyTestCases.csproj", "{0EB5646B-1AD9-49AC-92CC-3338A3BC8974}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -60,15 +56,8 @@ Global
 		{DC696DC6-68CB-488E-A207-290CD1F16880}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DC696DC6-68CB-488E-A207-290CD1F16880}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DC696DC6-68CB-488E-A207-290CD1F16880}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0EB5646B-1AD9-49AC-92CC-3338A3BC8974}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0EB5646B-1AD9-49AC-92CC-3338A3BC8974}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0EB5646B-1AD9-49AC-92CC-3338A3BC8974}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0EB5646B-1AD9-49AC-92CC-3338A3BC8974}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{0EB5646B-1AD9-49AC-92CC-3338A3BC8974} = {738A9D8D-6A18-4EA9-81BB-5563789767B6}
 	EndGlobalSection
 EndGlobal
