@@ -11,7 +11,7 @@ namespace CreateAUTHORSfile
         [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. https://tfsserver:8080/tfs/DefaultCollection")]
         public string SourceTfsCollectionUrl { get; set; }
 
-        [Option('p', "SourceProject", Required = true, HelpText = "Name of the source project")]
+        [Option('p', "SourceProject", HelpText = "Name of the source project")]
         public string SourceProjectName { get; set; }
 
         [Option('c', "close", DefaultValue = false, HelpText = "If put to true the command will not wait for userinput after executing")]
