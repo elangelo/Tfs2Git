@@ -62,7 +62,7 @@ namespace CreateWorkItems
         [HelpOption]
         public string GetUsage()
         {
-            var usage = "Usage: CreateWorkItems.exe -i \"https://tfsserver:8080/tfs/DefaultCollection\" -p \"SourceProject\" -n \"https://tfsserver:8080/tfs/newDefaultCollection\" -t \"TargetProject\" -o \"D:\\migration\\migration_TargetProject.xml\" -a -f -q -e";
+            var usage = "Usage: CreateWorkItems.exe -i \"http://tfsserver:8080/tfs/DefaultCollection\" -p \"SourceProject\" -n \"http://tfsserver:8080/tfs/newDefaultCollection\" -t \"TargetProject\" -w \"D:\\migration\\migration_TargetProject.xml\" -a -f -q -e";
 
             var help = new HelpText
             {

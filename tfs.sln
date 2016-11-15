@@ -19,7 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateAUTHORSfile", "Create
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6E0F5A19-D105-415A-BEF4-212B23378B1D}"
 	ProjectSection(SolutionItems) = preProject
-		AdamCore.cmd = AdamCore.cmd
+		.gitignore = .gitignore
 		README.md = README.md
 	EndProjectSection
 EndProject
