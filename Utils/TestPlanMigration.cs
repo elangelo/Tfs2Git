@@ -45,14 +45,14 @@ namespace Utils
             this.AreaMapTitles = new Dictionary<string, string>();
             foreach (var kvp in this.AreaMap)
             {
-                this.AreaMapTitles.Add(sourceProject.FindNodeInSubTree(kvp.Key).Name, targetProject.FindNodeInSubTree(kvp.Value).Name);
+                this.AreaMapTitles.Add(sourceProject.FindNodeInSubTree(kvp.Key).Path, targetProject.FindNodeInSubTree(kvp.Value).Path);
             }
 
             this.IterationMap = Utils.GetNodeMap(sourceProject.IterationRootNodes, targetProject.IterationRootNodes);
             this.IterationMapTitle = new Dictionary<string, string>();
             foreach (var kvp in this.IterationMap)
             {
-                this.IterationMapTitle.Add(sourceProject.FindNodeInSubTree(kvp.Key).Name, targetProject.FindNodeInSubTree(kvp.Value).Name);
+                this.IterationMapTitle.Add(sourceProject.FindNodeInSubTree(kvp.Key).Path, targetProject.FindNodeInSubTree(kvp.Value).Path);
             }
         }
 
@@ -145,16 +145,33 @@ namespace Utils
             return r.Replace(text, m =>
             {
                 var areaPath = m.Groups[3].Value;
-                areaPath = areaPath.Replace(this.SourceProjectName, this.TargetProjectName);
-                foreach (var split in areaPath.Split('\\'))
+
+                if (AreaMapTitles.ContainsKey(areaPath))
                 {
-                    if (this.AreaMapTitles.ContainsKey(split))
-                    {
-                        areaPath = areaPath.Replace(split, this.AreaMapTitles[split]);
-                    }
+                    areaPath = AreaMapTitles[areaPath];
+                }
+                else if (areaPath.Equals(SourceProjectName, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    areaPath = TargetProjectName;
+                }
+                else
+                {
+                    Console.WriteLine("gvd");
                 }
 
                 return $"{m.Groups[1]} {m.Groups[2]} '{areaPath}'";
+
+
+                //areaPath = areaPath.Replace(this.SourceProjectName, this.TargetProjectName);
+                //foreach (var split in areaPath.Split('\\'))
+                //{
+                //    if (this.AreaMapTitles.ContainsKey(split))
+                //    {
+                //        areaPath = areaPath.Replace(split, this.AreaMapTitles[split]);
+                //    }
+                //}
+
+                //return $"{m.Groups[1]} {m.Groups[2]} '{areaPath}'";
             });
         }
 
@@ -164,15 +181,31 @@ namespace Utils
             return r.Replace(text, m =>
                 {
                     var iterationPath = m.Groups[3].Value;
-                    iterationPath = iterationPath.Replace(this.SourceProjectName, this.TargetProjectName);
-                    foreach (var split in iterationPath.Split('\\'))
+
+                    if (IterationMapTitle.ContainsKey(iterationPath))
                     {
-                        if (this.IterationMapTitle.ContainsKey(split))
-                        {
-                            iterationPath = iterationPath.Replace(split, this.IterationMapTitle[split]);
-                        }
+                        iterationPath = IterationMapTitle[iterationPath];
                     }
+                    else if (iterationPath.Equals(SourceProjectName, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        iterationPath = TargetProjectName;
+                    }
+                    else
+                    {
+                        Console.WriteLine("gvd");
+                    }
+
                     return $"{m.Groups[1]} {m.Groups[2]} '{iterationPath}'";
+
+                    //iterationPath = iterationPath.Replace(this.SourceProjectName, this.TargetProjectName);
+                    //foreach (var split in iterationPath.Split('\\'))
+                    //{
+                    //    if (this.IterationMapTitle.ContainsKey(split))
+                    //    {
+                    //        iterationPath = iterationPath.Replace(split, this.IterationMapTitle[split]);
+                    //    }
+                    //}
+                    //return $"{m.Groups[1]} {m.Groups[2]} '{iterationPath}'";
                 }
             );
         }
