@@ -39,12 +39,27 @@ namespace Utils
             else
             {
                 var rootAreaRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectModelHierarchy").First();
-                var targetAreaNodePath = targetCommonStructureService.CreateNode(AreaOfIterationPath, rootAreaRootNodeInfo.Uri);
-                targetAreaRootNodeInfo = targetCommonStructureService.GetNode(targetAreaNodePath);
+                try
+                {
+                    targetAreaRootNodeInfo = targetCommonStructureService.GetNodeFromPath(rootAreaRootNodeInfo.Path + "\\" + AreaOfIterationPath);
+                }
+                catch
+                {
+                    //assume we get an exception becase the node doesn't exist
+                    var targetAreaNodePath = targetCommonStructureService.CreateNode(AreaOfIterationPath, rootAreaRootNodeInfo.Uri);
+                    targetAreaRootNodeInfo = targetCommonStructureService.GetNode(targetAreaNodePath);
+                }
 
                 var rootIterationRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectLifecycle").First();
-                var targetIterationNodePath = targetCommonStructureService.CreateNode(AreaOfIterationPath, rootIterationRootNodeInfo.Uri);
-                targetIterationRootNodeInfo = targetCommonStructureService.GetNode(targetIterationNodePath);
+                try
+                {
+                    targetIterationRootNodeInfo = targetCommonStructureService.GetNodeFromPath(rootIterationRootNodeInfo.Path + "\\" + AreaOfIterationPath);
+                }
+                catch
+                {
+                    var targetIterationNodePath = targetCommonStructureService.CreateNode(AreaOfIterationPath, rootIterationRootNodeInfo.Uri);
+                    targetIterationRootNodeInfo = targetCommonStructureService.GetNode(targetIterationNodePath);
+                }
             }
 
             //refresh, otherwise we can't find the new Areas/Iterations we just created
@@ -258,6 +273,12 @@ namespace Utils
             {
                 var mappedon = (targetReason != null ? $" mapped on '{targetReason}'" : "");
                 var historyMsg = $"{changeDate}: State changed to '{sourceState}', Reason was '{sourceReason}'{mappedon}";
+                targetWorkItem.Fields["System.History"].Value += historyMsg;
+            }
+
+            if (newWorkItem)
+            {
+                var historyMsg = $"***Tfs WorkItem Migration Process*** {Environment.NewLine}Copied from test case with id {revision0.WorkItem.Id}";
                 targetWorkItem.Fields["System.History"].Value += historyMsg;
             }
         }
@@ -521,7 +542,7 @@ namespace Utils
                 }
                 else
                 {
-                    Trace.WriteLine(string.Format("Field {0} was not found on TargetWorkItemType {1}", sourceFieldDefinition.ReferenceName, targetWorkItemType));
+                    Trace.WriteLine($"Field {sourceFieldDefinition.ReferenceName} was not found on TargetWorkItemType {targetWorkItemType}");
                 }
             }
 

@@ -33,6 +33,9 @@ namespace GenerateFieldMappings
         [OptionList('m', "Mapping", Separator = ';', HelpText = "Manually add mappings between WorkItemTypes. E.g. Issue:Bug, will map Issue on the SourceProject to Bug on the TargetProject, usefull if you are doing cross process template migrations")]
         public IList<string> ManualMappings { get; set; }
 
+        [OptionList('w', "WorkItemTypes", Separator = ';', HelpText = "Specify which work item types you want to map")]
+        public IList<string> WorkItemTypes { get; set; }
+
         [HelpOption]
         public string GetUsage()
         {
@@ -81,8 +84,7 @@ namespace GenerateFieldMappings
                     }
                 }
                 List<WorkItemTypeMapping> workItemMappings = Utils.Utils.CreateWorkItemTypeMapping(sourceProject.WorkItemTypes, targetProject.WorkItemTypes, manualMappings);
-
-                WorkItemStoreMapping wism = new WorkItemStoreMapping() { WorkItemTypeMapping = workItemMappings.ToArray() };
+                WorkItemStoreMapping wism = new WorkItemStoreMapping() { WorkItemTypeMapping = workItemMappings.Where(t => options.WorkItemTypes.Contains(t.SourceWorkItemType)).ToArray() };
 
                 XmlSerializer serializer = new XmlSerializer(typeof(WorkItemStoreMapping), new Type[] { typeof(WorkItemFieldMapping), typeof(WorkItemTypeMapping) });
 
@@ -94,7 +96,7 @@ namespace GenerateFieldMappings
                 List<WorkItemType> missingTargetWorkItemTypes = new List<WorkItemType>();
                 List<WorkItemType> mappedSourceWorkItemTypes = new List<WorkItemType>();
 
-                foreach (WorkItemType sourceWorkItemType in sourceProject.WorkItemTypes)
+                foreach (WorkItemType sourceWorkItemType in sourceProject.WorkItemTypes.Cast<WorkItemType>().Where(t => options.WorkItemTypes.Contains(t.Name)))
                 {
                     Console.WriteLine("------");
                     var query = targetProject.WorkItemTypes.Cast<WorkItemType>().Where(p => p.Name == sourceWorkItemType.Name);

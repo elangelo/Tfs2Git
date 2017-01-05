@@ -12,7 +12,7 @@ namespace BuildHistoryInDatabase
 {
     internal class Options
     {
-        [Option('i', "tfsCollectionUrl", Required = true, HelpText = "Url to the Tfs Collection. https://tfsserver:8080/tfs/DefaultCollection")]
+        [Option('i', "tfsCollectionUrl", Required = true, HelpText = "Url to the Tfs Collection. http://tfsserver:8080/tfs/DefaultCollection")]
         public string TfsCollectionUrl { get; set; }
 
         [Option('p', "project", Required = true, HelpText = "Project to be processed")]
@@ -27,7 +27,7 @@ namespace BuildHistoryInDatabase
         [HelpOption]
         public string GetUsage()
         {
-            var usage = "Usage: BuildHistoryInDatabase.exe -i \"https://tfsserver:8080/tfs/DefaultCollection\" -p \"SourceProject\"";
+            var usage = "Usage: BuildHistoryInDatabase.exe -i \"http://tfsserver:8080/tfs/DefaultCollection\" -p \"SourceProject\"";
 
             var help = new HelpText
             {
@@ -84,6 +84,10 @@ namespace BuildHistoryInDatabase
 
                     foreach (WorkItem wi in workItems)
                     {
+                        if (string.IsNullOrWhiteSpace(wi.Tags))
+                        {
+                            continue;
+                        }
                         wiCount++;
                         Console.SetCursorPosition(0, initialPosition);
                         Console.Write(wiCount + "/" + totalNumberOfWorkItems);

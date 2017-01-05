@@ -14,7 +14,7 @@ namespace CreateWorkItems
 {
     internal class Options
     {
-        [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. https://tfsserver:8080/tfs/DefaultCollection")]
+        [Option('i', "SourceTfsCollectionUrl", Required = true, HelpText = "Url to the source Tfs Collection. http://tfsserver:8080/tfs/DefaultCollection")]
         public string SourceTfsCollectionUrl { get; set; }
 
         [Option('n', "TargetTfsCollectionUrl", Required = true, HelpText = "Url to the target (new) Tfs Collection.")]
@@ -194,34 +194,18 @@ namespace CreateWorkItems
                                                 ////if (options.AddLinksToOldWorkItems)
                                                 ////{
                                                 ////    var a = int.Parse(wiRev.ChangedFields);
-
-
-
                                                 ////    //ChangedFields contains the target id of the link
                                                 ////    //OriginalId contains original source id of link
                                                 ////    //TargetId contains the migrated source id of the link//this one will always be empty, so ignore it
                                                 ////    //1. check if one of the 2 id's was migrated, if none was migrated ignore link we don't need to do anything
                                                 ////    //2. if source id of link was migrated
                                                 ////    //3. if target id of link was migrated
-
-
-
-
-
-
-
-
-
-
                                                 ////    //var sourceWorkItem = sourceWorkitemStore.GetWorkItem(wiRev.OriginalId);
-
                                                 ////    //var sourceWorkItemLinkHistoryRev = sourceWorkItem.WorkItemLinkHistory.Cast<WorkItemLink>().Where(wil => wil.RemovedDate.Year == 9999 && wil.TargetId.ToString() == wiRev.ChangedFields).First();
-
                                                 ////    //var linkTypeEnd = targetWorkitemStore.WorkItemLinkTypes.LinkTypeEnds[sourceWorkItemLinkHistoryRev.LinkTypeEnd.Name];
                                                 ////    //var workItemLink = new WorkItemLink(linkTypeEnd, mapping[sourceWorkItemLinkHistoryRev.SourceId], mapping[sourceWorkItemLinkHistoryRev.TargetId]);
                                                 ////    //workItemLink.ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate;
                                                 ////    //targetWorkItem.WorkItemLinks.Add(workItemLink);
-
                                                 ////    //var errors = targetWorkItem.Validate();
                                                 ////    //if (errors.Count == 0)
                                                 ////    //{
@@ -234,7 +218,6 @@ namespace CreateWorkItems
                                                 ////}
                                                 ////else
                                                 ////{
-
                                                 //this item was not migrated, maybe you didn't want it?
                                                 continue;
                                                 ////}
