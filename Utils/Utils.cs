@@ -30,7 +30,6 @@ namespace Utils
             NodeInfo targetAreaRootNodeInfo;
             NodeInfo targetIterationRootNodeInfo;
 
-
             if (string.IsNullOrEmpty(AreaOfIterationPath))
             {
                 targetAreaRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectModelHierarchy").First();
@@ -81,7 +80,7 @@ namespace Utils
                 targetCommonStructureService.DeleteBranches(nodeUris.ToArray(), targetAreaRootNodeInfo.Uri.ToString());
             }
 
-            copyNodes(sourceAreaRootNodes, targetAreaRootNodeInfo, targetCommonStructureService);
+            CopyNodes(sourceAreaRootNodes, targetAreaRootNodeInfo, targetCommonStructureService);
 
             //copy iterations
             var sourceIterationRootNodes = sourceProject.IterationRootNodes;
@@ -97,10 +96,113 @@ namespace Utils
                 targetCommonStructureService.DeleteBranches(nodeUris.ToArray(), targetIterationRootNodeInfo.Uri.ToString());
             }
 
-            copyNodes(sourceIterationRootNodes, targetIterationRootNodeInfo, targetCommonStructureService);
+            CopyNodes(sourceIterationRootNodes, targetIterationRootNodeInfo, targetCommonStructureService);
         }
 
-        public static void CopyFields(Revision revision0, WorkItem targetWorkItem, Dictionary<int, int> areaNodeMap, Dictionary<int, int> iterationNodeMap, Project targetProject, Project sourceProject, WorkItemStoreMapping wism, bool newWorkItem, string areaOrIterationPath, bool addStatusChangesToHistory = false)
+        public static void CopyAreaNodes(string sourceTfsTeamFoundationServerUrl, string sourceProjectName, string targetTfsTeamFoundationServerUrl, string targetProjectName, string AreaPath)
+        {
+            var sourceTfs = GetTfsTeamProjectCollection(sourceTfsTeamFoundationServerUrl);
+            var targetTfs = GetTfsTeamProjectCollection(targetTfsTeamFoundationServerUrl);
+
+            var sourceProject = GetWorkItemStore(sourceTfsTeamFoundationServerUrl, false).Projects[sourceProjectName];
+            var targetProject = GetWorkItemStore(targetTfsTeamFoundationServerUrl, true).Projects[targetProjectName];
+
+            var targetCommonStructureService = targetTfs.GetService<ICommonStructureService>();
+
+            NodeInfo targetAreaRootNodeInfo;
+
+            if (string.IsNullOrEmpty(AreaPath))
+            {
+                targetAreaRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectModelHierarchy").First();
+            }
+            else
+            {
+                var rootAreaRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectModelHierarchy").First();
+                try
+                {
+                    targetAreaRootNodeInfo = targetCommonStructureService.GetNodeFromPath(rootAreaRootNodeInfo.Path + "\\" + AreaPath);
+                }
+                catch
+                {
+                    //assume we get an exception becase the node doesn't exist
+                    var targetAreaNodePath = targetCommonStructureService.CreateNode(AreaPath, rootAreaRootNodeInfo.Uri);
+                    targetAreaRootNodeInfo = targetCommonStructureService.GetNode(targetAreaNodePath);
+                }
+            }
+
+            //refresh, otherwise we can't find the new Areas/Iterations we just created
+            targetProject = GetWorkItemStore(sourceTfsTeamFoundationServerUrl, false).Projects[sourceProjectName];
+            targetProject = GetWorkItemStore(targetTfsTeamFoundationServerUrl, true).Projects[targetProjectName];
+
+            List<string> nodeUris = new List<string>();
+            //copy areas
+            var sourceAreaRootNodes = sourceProject.AreaRootNodes;
+            foreach (Node node in targetProject.FindNodeInSubTree(targetAreaRootNodeInfo.Name, Node.TreeType.Area))
+            {
+                nodeUris.Add(node.Uri.ToString());
+            }
+
+            if (nodeUris.Count > 0)
+            {
+                targetCommonStructureService.DeleteBranches(nodeUris.ToArray(), targetAreaRootNodeInfo.Uri.ToString());
+            }
+
+            CopyNodes(sourceAreaRootNodes, targetAreaRootNodeInfo, targetCommonStructureService);
+        }
+
+        public static void CopyIterationNodes(string sourceTfsTeamFoundationServerUrl, string sourceProjectName, string targetTfsTeamFoundationServerUrl, string targetProjectName, string IterationPath)
+        {
+            var sourceTfs = GetTfsTeamProjectCollection(sourceTfsTeamFoundationServerUrl);
+            var targetTfs = GetTfsTeamProjectCollection(targetTfsTeamFoundationServerUrl);
+
+            var sourceProject = GetWorkItemStore(sourceTfsTeamFoundationServerUrl, false).Projects[sourceProjectName];
+            var targetProject = GetWorkItemStore(targetTfsTeamFoundationServerUrl, true).Projects[targetProjectName];
+
+            var targetCommonStructureService = targetTfs.GetService<ICommonStructureService>();
+
+            NodeInfo targetAreaRootNodeInfo;
+            NodeInfo targetIterationRootNodeInfo;
+
+            if (string.IsNullOrEmpty(IterationPath))
+            {
+                targetIterationRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectLifecycle").First();
+            }
+            else
+            {
+                var rootIterationRootNodeInfo = targetCommonStructureService.ListStructures(targetProject.Uri.ToString()).Where(p => p.StructureType == "ProjectLifecycle").First();
+                try
+                {
+                    targetIterationRootNodeInfo = targetCommonStructureService.GetNodeFromPath(rootIterationRootNodeInfo.Path + "\\" + IterationPath);
+                }
+                catch
+                {
+                    var targetIterationNodePath = targetCommonStructureService.CreateNode(IterationPath, rootIterationRootNodeInfo.Uri);
+                    targetIterationRootNodeInfo = targetCommonStructureService.GetNode(targetIterationNodePath);
+                }
+            }
+
+            //refresh, otherwise we can't find the new Areas/Iterations we just created
+            targetProject = GetWorkItemStore(sourceTfsTeamFoundationServerUrl, false).Projects[sourceProjectName];
+            targetProject = GetWorkItemStore(targetTfsTeamFoundationServerUrl, true).Projects[targetProjectName];
+
+            //copy iterations
+            var sourceIterationRootNodes = sourceProject.IterationRootNodes;
+            var nodeUris = new List<string>();
+            //foreach (Node node in targetProject.IterationRootNodes)
+            foreach (Node node in targetProject.FindNodeInSubTree(targetIterationRootNodeInfo.Name, Node.TreeType.Iteration))
+            {
+                nodeUris.Add(node.Uri.ToString());
+            }
+
+            if (nodeUris.Count > 0)
+            {
+                targetCommonStructureService.DeleteBranches(nodeUris.ToArray(), targetIterationRootNodeInfo.Uri.ToString());
+            }
+
+            CopyNodes(sourceIterationRootNodes, targetIterationRootNodeInfo, targetCommonStructureService);
+        }
+
+        public static void CopyFields(Revision revision0, WorkItem targetWorkItem, Dictionary<int, int> areaNodeMap, Dictionary<int, int> iterationNodeMap, Project targetProject, Project sourceProject, WorkItemStoreMapping wism, bool newWorkItem, string areaRootPath, string iterationRootPath, bool addStatusChangesToHistory = false)
         {
             var workItemTypeMapping = wism.WorkItemTypeMapping.Where(w => w.SourceWorkItemType == revision0.WorkItem.Type.Name).First();
 
@@ -179,14 +281,24 @@ namespace Utils
                                         targetField.Value = field.Value;
                                     }
                                 }
-                                else if (field.ReferenceName.Equals("System.AreaPath", StringComparison.InvariantCultureIgnoreCase) || field.ReferenceName.Equals("System.IterationPath", StringComparison.InvariantCultureIgnoreCase))
+                                else if (field.ReferenceName.Equals("System.AreaPath", StringComparison.InvariantCultureIgnoreCase))
                                 {
-                                    if (!string.IsNullOrEmpty(areaOrIterationPath))
+                                    if (!string.IsNullOrEmpty(areaRootPath))
                                     {
                                         string tmpValue3 = field.Value.ToString();
 
                                         var r = new Regex($"{sourceProject.Name}");
-                                        targetField.Value = r.Replace(tmpValue3, (m) => $"{targetProject.Name}\\{areaOrIterationPath}");
+                                        targetField.Value = r.Replace(tmpValue3, (m) => $"{targetProject.Name}\\{areaRootPath}");
+                                    }
+                                }
+                                else if (field.ReferenceName.Equals("System.IterationPath", StringComparison.InvariantCultureIgnoreCase))
+                                {
+                                    if (!string.IsNullOrEmpty(iterationRootPath))
+                                    {
+                                        string tmpValue3 = field.Value.ToString();
+
+                                        var r = new Regex($"{sourceProject.Name}");
+                                        targetField.Value = r.Replace(tmpValue3, (m) => $"{targetProject.Name}\\{iterationRootPath}");
                                     }
                                 }
                                 else if (field.Value != null && field.Value.GetType() == typeof(string))
@@ -244,7 +356,7 @@ namespace Utils
 
                     if (filenames.Contains(attachment.Name))
                     {
-                        attachmentName += getRandomSuffix();
+                        attachmentName += GetRandomSuffix();
                     }
 
                     filenames.Add(attachmentName);
@@ -287,13 +399,13 @@ namespace Utils
         {
             var workItemStore = sourceQueryFolder.Project.Store;
 
-            var variables = new Dictionary<string, string>();
-            variables.Add("project", sourceQueryFolder.Project.Name);
-
+            var variables = new Dictionary<string, string>
+            {
+                { "project", sourceQueryFolder.Project.Name }
+            };
             foreach (var sourceQueryFolderSubItem in sourceQueryFolder)
             {
-                var sourceQueryDefinition = sourceQueryFolderSubItem as QueryDefinition;
-                if (sourceQueryDefinition != null)
+                if (sourceQueryFolderSubItem is QueryDefinition sourceQueryDefinition)
                 {
                     //this is a query definition
                     //only try to migrate query if query is valid.
@@ -332,8 +444,7 @@ namespace Utils
                 }
                 else
                 {
-                    var sourceSubQueryFolder = sourceQueryFolderSubItem as QueryFolder;
-                    if (sourceSubQueryFolder != null)
+                    if (sourceQueryFolderSubItem is QueryFolder sourceSubQueryFolder)
                     {
                         //this is a query folder
                         var targetSubQueryFolder = new QueryFolder(sourceSubQueryFolder.Name);
@@ -413,22 +524,41 @@ namespace Utils
             return authors;
         }
 
-        public static Dictionary<int, int> GetNodeMap(NodeCollection sourceRootNodes, NodeCollection targetRootNodes)
+        public static Dictionary<int, int> GetNodeMap(NodeCollection sourceRootNodes, NodeCollection targetRootNodes, bool mapEverythingToRoot = false, int rootNode = 0)
         {
+            if (mapEverythingToRoot && rootNode == 0)
+            {
+                rootNode = targetRootNodes[0].ParentNode.Id;
+            }
             var iterationNodeMap = new Dictionary<int, int>();
 
             foreach (Node node in sourceRootNodes)
             {
-                var targetNode = targetRootNodes.Cast<Node>().Where(n => n.Name == node.Name).First();
-
-                iterationNodeMap.Add(node.Id, targetNode.Id);
-
-                if (node.HasChildNodes)
+                if (mapEverythingToRoot)
                 {
-                    var r = Utils.GetNodeMap(node.ChildNodes, targetNode.ChildNodes);
-                    foreach (var kvp in r)
+                    iterationNodeMap.Add(node.Id, rootNode);
+                    if (node.HasChildNodes)
                     {
-                        iterationNodeMap.Add(kvp.Key, kvp.Value);
+                        var r = Utils.GetNodeMap(node.ChildNodes, targetRootNodes, true, rootNode);
+                        foreach (var kvp in r)
+                        {
+                            iterationNodeMap.Add(kvp.Key, kvp.Value);
+                        }
+                    }
+                }
+                else
+                {
+                    var targetNode = targetRootNodes.Cast<Node>().Where(n => n.Name == node.Name).First();
+
+                    iterationNodeMap.Add(node.Id, targetNode.Id);
+
+                    if (node.HasChildNodes)
+                    {
+                        var r = Utils.GetNodeMap(node.ChildNodes, targetNode.ChildNodes, false, 0);
+                        foreach (var kvp in r)
+                        {
+                            iterationNodeMap.Add(kvp.Key, kvp.Value);
+                        }
                     }
                 }
             }
@@ -494,7 +624,7 @@ namespace Utils
             return tfsTeamProjectCollection;
         }
 
-        private static void copyNodes(NodeCollection sourceNodes, NodeInfo targetRootNode, ICommonStructureService css)
+        private static void CopyNodes(NodeCollection sourceNodes, NodeInfo targetRootNode, ICommonStructureService css)
         {
             foreach (Node sourceNode in sourceNodes)
             {
@@ -503,7 +633,7 @@ namespace Utils
 
                 if (sourceNode.HasChildNodes)
                 {
-                    copyNodes(sourceNode.ChildNodes, targetNode, css);
+                    CopyNodes(sourceNode.ChildNodes, targetNode, css);
                 }
             }
         }
@@ -549,7 +679,7 @@ namespace Utils
             return result;
         }
 
-        private static string getRandomSuffix()
+        private static string GetRandomSuffix()
         {
             return Guid.NewGuid().ToString();
         }

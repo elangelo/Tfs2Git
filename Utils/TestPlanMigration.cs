@@ -104,8 +104,7 @@ namespace Utils
 
             foreach (ITestSuiteEntry suite_entry in suites)
             {
-                IStaticTestSuite suite = suite_entry.TestSuite as IStaticTestSuite;
-                if (suite != null)
+                if (suite_entry.TestSuite is IStaticTestSuite suite)
                 {
                     IStaticTestSuite newSuite = targetTestMgmtProj.TestSuites.CreateStatic();
                     newSuite.Title = suite.Title;
@@ -118,8 +117,7 @@ namespace Utils
                 }
                 else
                 {
-                    IDynamicTestSuite dynamicSuite = suite_entry.TestSuite as IDynamicTestSuite;
-                    if (dynamicSuite != null)
+                    if (suite_entry.TestSuite is IDynamicTestSuite dynamicSuite)
                     {
                         IDynamicTestSuite newDynamicSuit = targetTestMgmtProj.TestSuites.CreateDynamic();
                         newDynamicSuit.Title = dynamicSuite.Title;
@@ -216,8 +214,7 @@ namespace Utils
             ITestSuiteEntryCollection suitcollection = parentsourceSuite.Entries;
             foreach (ITestSuiteEntry suite_entry in suitcollection)
             {
-                IStaticTestSuite suite = suite_entry.TestSuite as IStaticTestSuite;
-                if (suite != null)
+                if (suite_entry.TestSuite is IStaticTestSuite suite)
                 {
                     IStaticTestSuite subSuite = targetTestMgmtProj.TestSuites.CreateStatic();
                     subSuite.Title = suite.Title;
@@ -230,8 +227,7 @@ namespace Utils
                 }
                 else
                 {
-                    IDynamicTestSuite dynamicSuite = suite_entry.TestSuite as IDynamicTestSuite;
-                    if (dynamicSuite != null)
+                    if (suite_entry.TestSuite is IDynamicTestSuite dynamicSuite)
                     {
                         IDynamicTestSuite newDynamicSuit = targetTestMgmtProj.TestSuites.CreateDynamic();
                         newDynamicSuit.Title = dynamicSuite.Title;
@@ -269,8 +265,7 @@ namespace Utils
                     TestActionCollection testActionCollection = tc.Actions;
                     foreach (var item in testActionCollection)
                     {
-                        var sharedStepRef = item as ISharedStepReference;
-                        if (sharedStepRef != null)
+                        if (item is ISharedStepReference sharedStepRef)
                         {
                             int newSharedStepId = (int)WorkItemMap[sharedStepRef.SharedStepId];
                             //GetNewSharedStepId(testCase.Id, sharedStepRef.SharedStepId);

@@ -38,11 +38,17 @@ namespace CreateWorkItems
         [Option('l', "LogFile", Required = true, HelpText = "file where log of the process will be written")]
         public string LogFile { get; set; }
 
-        [Option('a', "CloneAreasAndIterations", DefaultValue = false)]
-        public bool CloneAreasAndIterations { get; set; }
+        [Option('a', "CloneArea", DefaultValue = false)]
+        public bool CloneAreas { get; set; }
 
-        [Option('k', "AreaAndIterationRoot", HelpText = "RootNode in the Area and Iteration Path that will be created to append the Areas and Iteration path of the source project. Especially usefull if you are migrating multiple projects into one project")]
-        public string AreaAndIterationRoot { get; set; }
+        [Option('b', "CloneIterations", DefaultValue = false)]
+        public bool CloneIterations { get; set; }
+
+        [Option('k', "AreaRoot", HelpText = "RootNode in the Area Path that will be created to append the Areas path of the source project. Especially usefull if you are migrating multiple projects into one project")]
+        public string AreaRoot { get; set; }
+
+        [Option('d', "IterationRoot", HelpText = "RootNode in the Iteration Path that will be created to append the Iteration path of the source project. Especially usefull if you are migrating multiple projects into one project")]
+        public string IterationRoot { get; set; }
 
         [Option('f', "CloneWorkItems", DefaultValue = false)]
         public bool CloneWorkItems { get; set; }
@@ -95,7 +101,6 @@ namespace CreateWorkItems
                 var initialPosition = Console.CursorTop;
                 string workItemMappingFile = options.WorkItemMappingFile;
 
-                bool cloneAreasAndIterations = options.CloneAreasAndIterations;
                 bool cloneWorkItems = options.CloneWorkItems;
                 bool cloneQueries = options.CloneQueries;
                 bool cloneTestPlans = options.CloneTestPlans;
@@ -123,9 +128,9 @@ namespace CreateWorkItems
                 Dictionary<int, string> invalidWorkItems = new Dictionary<int, string>();
                 var targetWorkitemStore = Utils.Utils.GetWorkItemStore(targetTfsUrl, true);
                 var stopwatch = Stopwatch.StartNew();
-                if (cloneAreasAndIterations)
+                if (options.CloneAreas)
                 {
-                    if (string.IsNullOrEmpty(options.AreaAndIterationRoot))
+                    if (string.IsNullOrEmpty(options.AreaRoot))
                     {
                         if (Utils.Utils.GetWorkItems(targetWorkitemStore, targetProjectName).Count > 0)
                         {
@@ -133,8 +138,12 @@ namespace CreateWorkItems
                             Environment.Exit(1);
                         }
                     }
+                    Utils.Utils.CopyAreaNodes(sourceTfsUrl, sourceProjectName, targetTfsUrl, targetProjectName, options.AreaRoot);
 
-                    Utils.Utils.CopyAreaAndIterationNodes(sourceTfsUrl, sourceProjectName, targetTfsUrl, targetProjectName, options.AreaAndIterationRoot);
+                }
+                if (options.CloneIterations)
+                {
+                    Utils.Utils.CopyIterationNodes(sourceTfsUrl, sourceProjectName, targetTfsUrl, targetProjectName, options.IterationRoot);
                 }
 
                 if (cloneWorkItems)
@@ -148,20 +157,26 @@ namespace CreateWorkItems
                     var sourceProject = sourceWorkitemStore.Projects[sourceProjectName];
                     NodeCollection targetAreaNodeCollection;
                     NodeCollection targetIterationNodeCollection;
-                    if (string.IsNullOrEmpty(options.AreaAndIterationRoot))
+                    if (string.IsNullOrEmpty(options.AreaRoot))
                     {
                         targetAreaNodeCollection = targetProject.AreaRootNodes;
+                    }
+                    else
+                    {
+                        targetAreaNodeCollection = targetProject.FindNodeInSubTree(options.AreaRoot, Node.TreeType.Area).ChildNodes;
+                    }
+
+                    if (string.IsNullOrEmpty(options.IterationRoot))
+                    { 
                         targetIterationNodeCollection = targetProject.IterationRootNodes;
                     }
                     else
                     {
-                        targetAreaNodeCollection = targetProject.FindNodeInSubTree(options.AreaAndIterationRoot, Node.TreeType.Area).ChildNodes;
-                        targetIterationNodeCollection = targetProject.FindNodeInSubTree(options.AreaAndIterationRoot, Node.TreeType.Iteration).ChildNodes;
+                        targetIterationNodeCollection = targetProject.FindNodeInSubTree(options.IterationRoot, Node.TreeType.Iteration).ChildNodes;
                     }
 
-
-                    var areaNodeMap = Utils.Utils.GetNodeMap(sourceProject.AreaRootNodes, targetAreaNodeCollection);
-                    var iterationNodeMap = Utils.Utils.GetNodeMap(sourceProject.IterationRootNodes, targetIterationNodeCollection);
+                    var areaNodeMap = Utils.Utils.GetNodeMap(sourceProject.AreaRootNodes, targetAreaNodeCollection, !options.CloneAreas);
+                    var iterationNodeMap = Utils.Utils.GetNodeMap(sourceProject.IterationRootNodes, targetIterationNodeCollection, !options.CloneIterations);
 
                     var mapping = new Dictionary<int, int>();
                     var notLinkedYet = 0;
@@ -239,8 +254,10 @@ namespace CreateWorkItems
                                                     else
                                                     {
                                                         var linkTypeEnd = targetWorkitemStore.WorkItemLinkTypes.LinkTypeEnds[sourceWorkItemLinkHistoryRev.LinkTypeEnd.Name];
-                                                        var workItemLink = new WorkItemLink(linkTypeEnd, mapping[sourceWorkItemLinkHistoryRev.SourceId], mapping[sourceWorkItemLinkHistoryRev.TargetId]);
-                                                        workItemLink.ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate;
+                                                        var workItemLink = new WorkItemLink(linkTypeEnd, mapping[sourceWorkItemLinkHistoryRev.SourceId], mapping[sourceWorkItemLinkHistoryRev.TargetId])
+                                                        {
+                                                            ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate
+                                                        };
                                                         targetWorkItem.WorkItemLinks.Add(workItemLink);
 
                                                         var errors = targetWorkItem.Validate();
@@ -268,9 +285,10 @@ namespace CreateWorkItems
                                                         else
                                                         {
                                                             var linkTypeEnd = targetWorkitemStore.WorkItemLinkTypes.LinkTypeEnds[sourceWorkItemLinkHistoryRev.LinkTypeEnd.Name];
-                                                            var workItemLink = new WorkItemLink(linkTypeEnd, targetWorkItem.Id, sourceWorkItemLinkHistoryRev.TargetId);
-                                                            //var workItemLink = new WorkItemLink(linkTypeEnd, mapping[sourceWorkItemLinkHistoryRev.SourceId], mapping[sourceWorkItemLinkHistoryRev.TargetId]);
-                                                            workItemLink.ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate;
+                                                            var workItemLink = new WorkItemLink(linkTypeEnd, targetWorkItem.Id, sourceWorkItemLinkHistoryRev.TargetId)
+                                                            {
+                                                                ChangedDate = sourceWorkItemLinkHistoryRev.ChangedDate
+                                                            };
                                                             targetWorkItem.WorkItemLinks.Add(workItemLink);
 
                                                             var errors = targetWorkItem.Validate();
@@ -286,7 +304,6 @@ namespace CreateWorkItems
                                                     }
                                                     else
                                                     {
-                                                        // notLinkedYet++;
                                                         continue;
                                                     }
                                                 }
@@ -328,7 +345,7 @@ namespace CreateWorkItems
                                                 }
                                             }
 
-                                            Utils.Utils.CopyFields(sourceWiRev, targetWorkItem, areaNodeMap, iterationNodeMap, targetProject, sourceProject, wism, isNew, options.AreaAndIterationRoot);
+                                            Utils.Utils.CopyFields(sourceWiRev, targetWorkItem, areaNodeMap, iterationNodeMap, targetProject, sourceProject, wism, isNew, options.AreaRoot, options.IterationRoot);
 
                                             if (targetWorkItem.Fields[CoreField.ChangedDate].Value != null)
                                             {
